@@ -1,7 +1,7 @@
 module github.com/leandroluk/goutbox-relay
 
 // Minimum Go version required to build this module.
-go 1.25.0
+go 1.23.0
 
 require (
 	// PostgreSQL driver — pure Go, no CGO required (matches CGO_ENABLED=0 build).
