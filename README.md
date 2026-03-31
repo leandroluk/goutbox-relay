@@ -204,8 +204,8 @@ goutbox-relay/
 │   └── relay/
 │       └── main.go              # Entrypoint: wires deps and runs the polling loop
 ├── deployments/
+│   ├── Dockerfile               # Multi-stage build → scratch final image
 │   └── k8s/
-│       ├── Dockerfile           # Multi-stage build → scratch final image
 │       ├── deployment.yaml      # Long-lived relay (recommended)
 │       └── cronjob.yaml         # Periodic relay (low-volume alternative)
 ├── internal/

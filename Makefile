@@ -47,7 +47,7 @@ compose-down:
 	docker compose down --remove-orphans
 
 docker-build:
-	docker build -t $(DOCKER_IMAGE):latest -f deployments/k8s/Dockerfile .
+	docker build -t $(DOCKER_IMAGE):latest -f deployments/Dockerfile .
 
 run:
 	go run ./cmd/relay

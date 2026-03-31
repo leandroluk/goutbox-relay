@@ -63,7 +63,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: deployments/k8s/Dockerfile
+          file: deployments/Dockerfile
           push: true
           tags: leandroluk/goutbox-relay:latest,leandroluk/goutbox-relay:${{ github.sha }}
           cache-from: type=gha
