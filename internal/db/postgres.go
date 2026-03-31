@@ -18,7 +18,11 @@ import (
 // Ping. Connection-pool knobs are tuned for the relay's single-goroutine,
 // batch-oriented access pattern.
 func NewPostgres(url string) (*sql.DB, error) {
-	db, err := sql.Open("postgres", url)
+	return newPostgresWithDriver("postgres", url)
+}
+
+func newPostgresWithDriver(driver, url string) (*sql.DB, error) {
+	db, err := sql.Open(driver, url)
 	if err != nil {
 		return nil, fmt.Errorf("db: open connection: %w", err)
 	}
@@ -39,6 +43,7 @@ func NewPostgres(url string) (*sql.DB, error) {
 
 	return db, nil
 }
+
 
 // SetupSchema creates the outbox and config tables when they do not already
 // exist, then seeds the initial cursor row. Every statement uses IF NOT

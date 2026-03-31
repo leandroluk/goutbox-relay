@@ -80,8 +80,14 @@ require (
 )
 
 require (
+	github.com/DATA-DOG/go-sqlmock v1.5.2
+	github.com/alicebob/miniredis/v2 v2.37.0
+)
+
+require (
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.28.0 // indirect
 	github.com/mdelapenya/tlscert v0.2.0 // indirect
+	github.com/yuin/gopher-lua v1.1.1 // indirect
 	google.golang.org/grpc v1.79.1 // indirect
 	google.golang.org/protobuf v1.36.11 // indirect
 )

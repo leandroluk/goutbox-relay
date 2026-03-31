@@ -61,12 +61,32 @@ func TestRequireEnv_ReturnsValue(t *testing.T) {
 }
 
 func TestRequireEnv_FatalsWhenAbsent(t *testing.T) {
-	// log.Fatalf calls os.Exit(1), which cannot be caught in a normal test.
-	// We verify the panic/fatal path by running it in a sub-process via
-	// t.Run + os.Exit detection is not possible with stdlib alone, so we
-	// simply document the invariant here and rely on the Load() integration
-	// test below to validate the fatal path indirectly.
-	t.Skip("requireEnv fatal path tested via Load() below")
+	original := logFatalf
+	t.Cleanup(func() { logFatalf = original })
+
+	var gotFormat string
+	logFatalf = func(format string, _ ...any) {
+		gotFormat = format
+	}
+
+	t.Setenv("TEST_REQUIRED_ABSENT_KEY", "")
+	requireEnv("TEST_REQUIRED_ABSENT_KEY")
+
+	assert.Contains(t, gotFormat, "required environment variable")
+}
+
+func TestRequireEnv_FatalsWhenNotSet(t *testing.T) {
+	original := logFatalf
+	t.Cleanup(func() { logFatalf = original })
+
+	var called bool
+	logFatalf = func(_ string, _ ...any) {
+		called = true
+	}
+
+	requireEnv("TEST_KEY_DEFINITELY_NOT_SET_XYZ")
+
+	assert.True(t, called)
 }
 
 // --- Load -------------------------------------------------------------------

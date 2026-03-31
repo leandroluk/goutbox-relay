@@ -14,6 +14,32 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write    
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
     steps:
       - uses: actions/checkout@v5
         with:
@@ -29,13 +55,23 @@ jobs:
         run: make lint
 
       - name: Run Unit Tests
+        env:
+          TEST_POSTGRES_URL: postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable
+          TEST_REDIS_URL: redis://localhost:6379
         run: make test-unit
 
       - name: Run E2E Tests
+        env:
+          POSTGRES_URL: postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable
+          REDIS_URL: redis://localhost:6379
         run: make test-e2e
 
       - name: Generate Coverage Report
+        env:
+          TEST_POSTGRES_URL: postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable
+          TEST_REDIS_URL: redis://localhost:6379
         run: make coverage
+
 
       - name: Update Coverage Badge
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'

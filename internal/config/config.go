@@ -12,6 +12,8 @@ import (
 	"time"
 )
 
+var logFatalf = log.Fatalf
+
 // Config holds the complete, validated configuration for the relay.
 // All fields are immutable after Load() returns.
 type Config struct {
@@ -64,7 +66,7 @@ func Load() Config {
 func requireEnv(key string) string {
 	v, ok := os.LookupEnv(key)
 	if !ok || v == "" {
-		log.Fatalf("config: required environment variable %q is not set", key)
+		logFatalf("config: required environment variable %q is not set", key)
 	}
 	return v
 }
