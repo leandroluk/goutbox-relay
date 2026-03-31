@@ -1,0 +1,52 @@
+services:
+
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    # Persist data across container restarts during local development.
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    # Healthcheck ensures dependent services only start after Postgres
+    # is fully ready to accept connections, not just running.
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  relay:
+    build:
+      context: .
+      dockerfile: deployments/Dockerfile
+    environment:
+      POSTGRES_URL: "postgres://postgres:postgres@postgres:5432/postgres?sslmode=disable"
+      REDIS_URL: "redis://redis:6379"
+      # POLL_INTERVAL is parsed as an integer (seconds) by the relay.
+      POLL_INTERVAL: "2"
+    # Use condition-based depends_on so the relay only starts after
+    # both Postgres and Redis pass their healthchecks.
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  # Named volume for Postgres data persistence in local development.
+  postgres_data:

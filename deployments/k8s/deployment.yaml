@@ -1,0 +1,95 @@
+# deployments/k8s/deployment.yaml
+#
+# Runs goutbox-relay as a long-lived Deployment with a single replica.
+# The relay's cursor-locking strategy (FOR UPDATE on the config table) makes
+# it safe to have exactly one replica doing the polling. If higher throughput
+# is ever needed, partitioned outbox tables + multiple replicas can be
+# introduced without changing this manifest.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: goutbox-relay
+  labels:
+    app: goutbox-relay
+    # version label enables canary/blue-green rollouts via label selectors
+    version: latest
+spec:
+  # Single replica is intentional — the cursor lock in Postgres prevents
+  # duplicate event forwarding, but running more than one replica would
+  # cause unnecessary lock contention with no throughput benefit.
+  replicas: 1
+  selector:
+    matchLabels:
+      app: goutbox-relay
+  template:
+    metadata:
+      labels:
+        app: goutbox-relay
+        version: latest
+      annotations:
+        # Prometheus scraping. Remove if not using Prometheus.
+        prometheus.io/scrape: "false"
+    spec:
+      # terminationGracePeriodSeconds gives the relay time to finish the
+      # current batch before Kubernetes sends SIGKILL after SIGTERM.
+      # Set to slightly more than (POLL_INTERVAL + expected batch duration).
+      terminationGracePeriodSeconds: 30
+
+      containers:
+      - name: relay
+        # Pin to a specific digest or tag in production instead of :latest
+        # to ensure rollbacks are deterministic.
+        image: leandroluk/goutbox-relay:latest
+        imagePullPolicy: Always
+
+        resources:
+          requests:
+            # 50m CPU and 32Mi RAM is conservative for a polling relay.
+            # Adjust based on observed usage after running in staging.
+            cpu: "50m"
+            memory: "32Mi"
+          limits:
+            cpu: "200m"
+            memory: "64Mi"
+
+        env:
+        # ── Required — injected from Kubernetes Secrets ──────────────────
+        - name: POSTGRES_URL
+          valueFrom:
+            secretKeyRef:
+              name: goutbox-relay-secrets
+              key: postgres-url
+        - name: REDIS_URL
+          valueFrom:
+            # Redis URL may contain a password; use a Secret, not a plain value.
+            secretKeyRef:
+              name: goutbox-relay-secrets
+              key: redis-url
+
+        # ── Optional — tuning ─────────────────────────────────────────────
+        - name: TABLE_OUTBOX
+          value: "outbox"
+        - name: TABLE_CONFIG
+          value: "relay_config"
+        - name: BATCH_SIZE
+          value: "500"
+        - name: POLL_INTERVAL
+          value: "5"
+        - name: RETENTION_DAYS
+          value: "7"
+
+        # Liveness probe: restart the container if the process is stuck.
+        # The relay has no HTTP server, so we use a simple process check
+        # via exec. Replace with an HTTP probe if you add a /healthz endpoint.
+        livenessProbe:
+          exec:
+            command: ["pgrep", "-x", "goutbox-relay"]
+          initialDelaySeconds: 10
+          periodSeconds: 15
+          failureThreshold: 3
+
+      # Restrict the pod to run as a non-root user for defence in depth.
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534  # "nobody"
+        readOnlyRootFilesystem: true

@@ -1,0 +1,100 @@
+# deployments/k8s/cronjob.yaml
+#
+# Alternative deployment mode: run the relay as a Kubernetes CronJob instead
+# of a long-lived Deployment.
+#
+# USE THIS when:
+#   - Your outbox volume is low and you only need periodic forwarding.
+#   - You want the relay to consume zero CPU/memory between runs.
+#
+# USE deployment.yaml instead when:
+#   - You need near-real-time event forwarding (latency < poll interval).
+#   - Your outbox receives a steady stream of events.
+#
+# The two modes are mutually exclusive — do not apply both manifests.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: goutbox-relay-cron
+  labels:
+    app: goutbox-relay
+spec:
+  # Run once per minute. Adjust to match your latency requirements.
+  # Fine-grained scheduling (< 1 min) requires the Deployment mode instead.
+  schedule: "*/1 * * * *"
+
+  # Forbid prevents a second Job from starting if the previous one is still
+  # running. This is critical for correctness: two concurrent relay instances
+  # would race on the Postgres cursor lock.
+  concurrencyPolicy: Forbid
+
+  # Keep the last 3 successful and 1 failed Job for debugging purposes.
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+
+  jobTemplate:
+    spec:
+      # Retry the Job up to 2 times before marking it as failed.
+      # Combined with OnFailure restartPolicy, this limits runaway retries.
+      backoffLimit: 2
+
+      # Abandon the Job if it runs longer than 55 seconds (just under the
+      # 1-minute schedule interval) so it never overlaps the next scheduled run
+      # even if concurrencyPolicy is misconfigured.
+      activeDeadlineSeconds: 55
+
+      template:
+        metadata:
+          labels:
+            app: goutbox-relay
+        spec:
+          terminationGracePeriodSeconds: 30
+
+          containers:
+          - name: relay
+            image: leandroluk/goutbox-relay:latest
+            imagePullPolicy: Always
+
+            resources:
+              requests:
+                cpu: "50m"
+                memory: "32Mi"
+              limits:
+                cpu: "200m"
+                memory: "64Mi"
+
+            env:
+            # ── Required — injected from Kubernetes Secrets ─────────────────
+            - name: POSTGRES_URL
+              valueFrom:
+                secretKeyRef:
+                  name: goutbox-relay-secrets
+                  key: postgres-url
+            - name: REDIS_URL
+              valueFrom:
+                # Redis URL may contain a password; use a Secret, not a plain value.
+                secretKeyRef:
+                  name: goutbox-relay-secrets
+                  key: redis-url
+
+            # ── Optional — tuning ──────────────────────────────────────────
+            - name: BATCH_SIZE
+              # Larger batch makes sense here: the job runs infrequently so
+              # we want to drain as many events as possible per execution.
+              value: "1000"
+            - name: RETENTION_DAYS
+              value: "7"
+            # In CronJob mode the relay exits after one batch (or after
+            # draining the backlog). POLL_INTERVAL controls the sleep between
+            # back-to-back batches within a single Job run, not the cron cadence.
+            - name: POLL_INTERVAL
+              value: "2"
+
+          # OnFailure restarts the container within the same Pod on error,
+          # which is appropriate for batch Jobs. Never is used for Deployments.
+          restartPolicy: OnFailure
+
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65534  # "nobody"
+            readOnlyRootFilesystem: true
