@@ -1,7 +1,7 @@
 module github.com/leandroluk/goutbox-relay
 
 // Minimum Go version required to build this module.
-go 1.23.0
+go 1.25.0
 
 require (
 	// PostgreSQL driver — pure Go, no CGO required (matches CGO_ENABLED=0 build).
@@ -24,10 +24,8 @@ require (
 )
 
 require (
-	github.com/kr/pretty v0.3.1 // indirect
 	github.com/testcontainers/testcontainers-go v0.41.0
 	go.uber.org/atomic v1.11.0 // indirect
-	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 )
 
 require (
@@ -81,4 +79,9 @@ require (
 	golang.org/x/sys v0.41.0 // indirect
 )
 
-require github.com/mdelapenya/tlscert v0.2.0 // indirect
+require (
+	github.com/grpc-ecosystem/grpc-gateway/v2 v2.28.0 // indirect
+	github.com/mdelapenya/tlscert v0.2.0 // indirect
+	google.golang.org/grpc v1.79.1 // indirect
+	google.golang.org/protobuf v1.36.11 // indirect
+)
