@@ -44,16 +44,10 @@ func newPostgresWithDriver(driver, url string) (*sql.DB, error) {
 	return db, nil
 }
 
-
-// SetupSchema creates the outbox and config tables when they do not already
-// exist, then seeds the initial cursor row. Every statement uses IF NOT
-// EXISTS / ON CONFLICT so the function is safe to call on every startup —
-// no manual migration step is required for the relay's own bookkeeping tables.
-//
-// Note: this function deliberately does NOT create the application's outbox
-// table in production deployments — that table must be owned by the
-// application. It is created here only to simplify local development and
-// integration testing via Docker Compose.
+// SetupSchema creates the outbox table, its topic index, and the relay config
+// table when they do not already exist, then seeds the initial cursor row.
+// Every statement uses IF NOT EXISTS / ON CONFLICT so the function is safe to
+// call on every startup — no manual migration step is required.
 func SetupSchema(db *sql.DB, cfg config.Config) error {
 	statements := []struct {
 		desc string

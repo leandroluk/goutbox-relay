@@ -85,7 +85,7 @@ The [Transactional Outbox Pattern](https://microservices.io/patterns/data/transa
 docker compose up --build
 ```
 
-The relay will create its own bookkeeping tables on first startup. Your application only needs to write to the `outbox` table (see [Database Setup](#database-setup)).
+The relay will automatically create all required tables and indexes on first startup. Your application only needs to write to the `outbox` table (see [Database Setup](#database-setup)).
 
 ---
 
@@ -107,11 +107,19 @@ All configuration is done through environment variables. `POSTGRES_URL` and `RED
 
 ## Database Setup
 
-The relay manages its own bookkeeping tables (`relay_config`) automatically on startup. The `outbox` table must be created by your application's migrations so it lives under the same ownership and access controls as your business data.
+On startup, the relay automatically creates everything it needs — no manual migration required:
+
+| Object | Purpose |
+| :--- | :--- |
+| `outbox` table | Stores domain events written by your application |
+| `idx_outbox_topic` index | Speeds up consumer-side queries filtered by stream name |
+| `relay_config` table | Persists the cursor (last processed outbox ID) across restarts |
+
+All DDL uses `IF NOT EXISTS` / `ON CONFLICT DO NOTHING`, so it is fully idempotent and safe to run on every startup against existing databases.
+
+The schema used for the `outbox` table is:
 
 ```sql
--- Outbox table: written by your application inside business transactions.
--- The relay only reads from this table — it never writes to it.
 CREATE TABLE IF NOT EXISTS outbox (
     id         BIGSERIAL    PRIMARY KEY,
     topic      TEXT         NOT NULL,          -- maps to a Redis Stream name
@@ -119,7 +127,6 @@ CREATE TABLE IF NOT EXISTS outbox (
     created_at TIMESTAMPTZ  NOT NULL DEFAULT NOW()
 );
 
--- Optional but recommended: speeds up consumer-side queries filtered by topic.
 CREATE INDEX IF NOT EXISTS idx_outbox_topic ON outbox (topic);
 ```
 
@@ -130,6 +137,8 @@ Writing an event from your application:
 INSERT INTO outbox (topic, payload)
 VALUES ('orders.created', '{"order_id": 42, "total": 99.90}');
 ```
+
+> **Note:** if your application already owns an `outbox` table with a compatible schema, the relay will use it as-is — the `IF NOT EXISTS` guards prevent any conflict.
 
 ---
 
