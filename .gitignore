@@ -1,14 +1,10 @@
-# Binaries
+# Build artefacts
 bin/
-outbounder
 
-# IDEs
-.vscode/
-.idea/
+# Local environment variables (may contain credentials)
+# Copy .env.example to .env to get started
+.env
 
-# OS
-.DS_Store
-
-# Go
-vendor/
-*.log
+# Coverage reports (only the SVG badge is committed)
+.public/coverage.out
+.public/coverage.html

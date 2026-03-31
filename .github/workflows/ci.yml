@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+          cache: true
+
+      - name: Lint
+        run: make lint
+
+      - name: Run Unit Tests
+        run: make test-unit
+
+      - name: Run E2E Tests
+        run: make test-e2e
+
+      - name: Generate Coverage Report
+        run: make coverage
+
+      - name: Update Coverage Badge
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add .public/coverage.svg
+          git commit -m "chore: update coverage badge [skip ci]" || exit 0
+          git push

@@ -1,5 +1,11 @@
 # goutbox-relay
 
+[![CI](https://github.com/leandroluk/goutbox-relay/actions/workflows/ci.yml/badge.svg)](https://github.com/leandroluk/goutbox-relay/actions/workflows/ci.yml)
+[![Go Report Card](https://goreportcard.com/badge/github.com/leandroluk/goutbox-relay)](https://goreportcard.com/report/github.com/leandroluk/goutbox-relay)
+[![Go Reference](https://pkg.go.dev/badge/github.com/leandroluk/goutbox-relay.svg)](https://pkg.go.dev/github.com/leandroluk/goutbox-relay)
+![Coverage](.public/coverage.svg)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 High-performance Transactional Outbox relay written in Go. Synchronizes events from PostgreSQL to Redis Streams for reliable event-driven and CQRS architectures.
 
 ## Table of Contents
@@ -15,6 +21,7 @@ High-performance Transactional Outbox relay written in Go. Synchronizes events f
     - [Deployment (recommended for production)](#deployment-recommended-for-production)
     - [CronJob (for low-volume workloads)](#cronjob-for-low-volume-workloads)
   - [Development](#development)
+      - [Running e2e tests locally](#running-e2e-tests-locally)
     - [Project Structure](#project-structure)
   - [Architecture Notes](#architecture-notes)
   - [License](#license)
@@ -162,10 +169,31 @@ The CronJob runs every minute with `concurrencyPolicy: Forbid`, so it will never
 ```bash
 make run          # Run directly via `go run`
 make build        # Compile a static Linux binary into ./bin/
-make test         # Run all tests with the race detector enabled
+make test-unit    # Run unit tests (no Docker required)
+make test-e2e     # Run end-to-end tests (see below)
+make test         # Run unit + e2e
+make compose-up   # Start Postgres and Redis
+make compose-down # Stop Postgres and Redis
+make coverage     # Generate coverage report and badge at .public/
 make lint         # Run golangci-lint (requires golangci-lint installed)
 make docker-build # Build the Docker image
 make clean        # Remove build artefacts
+```
+
+#### Running e2e tests locally
+
+On **Linux/macOS**, `make test-e2e` starts Postgres and Redis automatically via [testcontainers-go](https://golang.testcontainers.org/) — no setup needed.
+
+On **Windows**, testcontainers-go does not support rootless Docker. Start the dependencies manually and export the connection URLs before running:
+
+```powershell
+# Terminal 1 — start dependencies
+docker compose up -d postgres redis
+
+# Terminal 2 — run e2e tests
+$env:POSTGRES_URL = "postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable"
+$env:REDIS_URL    = "redis://localhost:6379"
+make test-e2e
 ```
 
 ### Project Structure

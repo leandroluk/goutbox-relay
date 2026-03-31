@@ -1,0 +1,12 @@
+{
+  "recommendations": [
+    // Icons for Visual Studio Code
+    "vscode-icons-team.vscode-icons",
+    // Supercharge Git within VS Code
+    "eamodio.gitlens",
+    // Makes it easy to create, manage, and debug containerized applications.
+    "ms-azuretools.vscode-docker",
+    // All you need to write Markdown (keyboard shortcuts, table of contents, auto preview and more)
+    "yzhang.markdown-all-in-one"
+  ]
+}

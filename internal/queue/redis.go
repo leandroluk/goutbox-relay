@@ -3,7 +3,7 @@
 // Package queue wraps the Redis client with the narrow interface that the
 // relay needs: pipeline execution for bulk XADD and graceful shutdown.
 // Keeping Redis concerns isolated here makes the service layer testable
-// without a real Redis instance.
+// without depending on the full redis.Client API surface.
 package queue
 
 import (
@@ -57,4 +57,16 @@ func (q *RedisQueue) Pipeline() redis.Pipeliner {
 // It should be called via defer in main() after the polling loop exits.
 func (q *RedisQueue) Close() error {
 	return q.client.Close()
+}
+
+// XLen returns the number of entries in a Redis Stream.
+// Used in tests to assert that events landed in the correct stream.
+func (q *RedisQueue) XLen(ctx context.Context, stream string) (int64, error) {
+	return q.client.XLen(ctx, stream).Result()
+}
+
+// Del removes one or more Redis keys.
+// Used in tests to clean up streams created during test runs.
+func (q *RedisQueue) Del(ctx context.Context, keys ...string) error {
+	return q.client.Del(ctx, keys...).Err()
 }
